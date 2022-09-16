@@ -22,7 +22,10 @@ import static org.camunda.bpm.engine.management.Metrics.DECISION_INSTANCES;
 import static org.camunda.bpm.engine.management.Metrics.EXECUTED_DECISION_ELEMENTS;
 import static org.camunda.bpm.engine.management.Metrics.FLOW_NODE_INSTANCES;
 import static org.camunda.bpm.engine.management.Metrics.PROCESS_INSTANCES;
+
+import java.util.Date;
 import java.util.Map;
+
 import org.camunda.bpm.engine.ProcessEngineException;
 import org.camunda.bpm.engine.RuntimeService;
 import org.camunda.bpm.engine.impl.ManagementServiceImpl;
@@ -32,6 +35,7 @@ import org.camunda.bpm.engine.impl.telemetry.TelemetryRegistry;
 import org.camunda.bpm.engine.impl.telemetry.dto.LicenseKeyDataImpl;
 import org.camunda.bpm.engine.impl.telemetry.dto.TelemetryDataImpl;
 import org.camunda.bpm.engine.impl.telemetry.reporter.TelemetryReporter;
+import org.camunda.bpm.engine.impl.util.ClockUtil;
 import org.camunda.bpm.engine.telemetry.ApplicationServer;
 import org.camunda.bpm.engine.telemetry.Command;
 import org.camunda.bpm.engine.telemetry.Metric;
@@ -344,4 +348,81 @@ public class ManagementServiceGetTelemetryDataTest {
     assertThat(metrics.get(DECISION_INSTANCES).getCount()).isEqualTo(0);
     assertThat(metrics.get(EXECUTED_DECISION_ELEMENTS).getCount()).isEqualTo(0);
   }
+
+  @Test
+  public void shouldSetDataCollectionTimeFrameToEngineStartTimeWhenTelemetryDisabled() {
+    // given default telemetry data and empty telemetry registry
+    // current time after engine startup but before fetching telemetry data
+    Date beforeGetTelemetry = ClockUtil.getCurrentTime();
+    // move clock by one second to pass some time before fetching telemetry
+    ClockUtil.offset(1000L);
+
+    // when
+    TelemetryData telemetryData = managementService.getTelemetryData();
+
+    // then
+    assertThat(telemetryData.getProduct().getInternals().getDataCollectionStartDate()).isBefore(beforeGetTelemetry);
+  }
+
+  @Test
+  public void shouldNotResetCollectionTimeFrameAfterGetTelemetryWhenTelemetryDisabled() {
+    // given default telemetry data and empty telemetry registry
+    TelemetryData initialTelemetryData = managementService.getTelemetryData();
+
+    // when fetching telemetry data again
+    TelemetryData secondTelemetryData = managementService.getTelemetryData();
+
+    // then the data collection time frame should not reset after the first call
+    assertThat(initialTelemetryData.getProduct().getInternals().getDataCollectionStartDate()).isEqualTo(secondTelemetryData.getProduct().getInternals().getDataCollectionStartDate());
+  }
+
+  @Test
+  public void shouldSetDataCollectionTimeFrameToEngineStartTimeWhenTelemetryEnabled() {
+    // given default telemetry data and empty telemetry registry
+    // current time after engine startup but before fetching telemetry data
+    Date beforeGetTelemetry = ClockUtil.getCurrentTime();
+
+    // avtivate telemetry
+    managementService.toggleTelemetry(true);
+
+    // move clock by one second to pass some time before fetching telemetry
+    ClockUtil.offset(1000L);
+
+    // when
+    TelemetryData telemetryData = managementService.getTelemetryData();
+
+    // then
+    assertThat(telemetryData.getProduct().getInternals().getDataCollectionStartDate()).isBefore(beforeGetTelemetry);
+  }
+
+  @Test
+  public void shouldNotResetCollectionTimeFrameAfterGetTelemetryWhenTelemetryEnabled() {
+    // given default telemetry data and empty telemetry registry
+    // activate telemetry
+    managementService.toggleTelemetry(true);
+
+    TelemetryData initialTelemetryData = managementService.getTelemetryData();
+
+    // when fetching telemetry data again
+    TelemetryData secondTelemetryData = managementService.getTelemetryData();
+
+    // then the data collection time frame should not reset after the first call
+    assertThat(initialTelemetryData.getProduct().getInternals().getDataCollectionStartDate()).isEqualTo(secondTelemetryData.getProduct().getInternals().getDataCollectionStartDate());
+  }
+
+  @Test
+  public void shouldNotResetCollectionTimeFrameAfterToggleTelemetry() {
+    // given default telemetry data and empty telemetry registry
+    Date beforeToggleTelemetry = managementService.getTelemetryData().getProduct().getInternals().getDataCollectionStartDate();
+
+    // when
+    managementService.toggleTelemetry(true);
+
+    // then
+    Date afterToggleTelemetry = managementService.getTelemetryData().getProduct().getInternals().getDataCollectionStartDate();
+
+    assertThat(beforeToggleTelemetry).isNotNull();
+    assertThat(beforeToggleTelemetry).isEqualTo(afterToggleTelemetry);
+  }
+
 }

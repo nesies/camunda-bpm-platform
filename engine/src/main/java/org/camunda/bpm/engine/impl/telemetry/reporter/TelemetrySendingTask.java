@@ -46,10 +46,11 @@ import org.camunda.bpm.engine.impl.telemetry.TelemetryLogger;
 import org.camunda.bpm.engine.impl.telemetry.TelemetryRegistry;
 import org.camunda.bpm.engine.impl.telemetry.dto.ApplicationServerImpl;
 import org.camunda.bpm.engine.impl.telemetry.dto.CommandImpl;
-import org.camunda.bpm.engine.impl.telemetry.dto.TelemetryDataImpl;
 import org.camunda.bpm.engine.impl.telemetry.dto.InternalsImpl;
 import org.camunda.bpm.engine.impl.telemetry.dto.MetricImpl;
 import org.camunda.bpm.engine.impl.telemetry.dto.ProductImpl;
+import org.camunda.bpm.engine.impl.telemetry.dto.TelemetryDataImpl;
+import org.camunda.bpm.engine.impl.util.ClockUtil;
 import org.camunda.bpm.engine.impl.util.JsonUtil;
 import org.camunda.bpm.engine.impl.util.TelemetryUtil;
 import org.camunda.bpm.engine.telemetry.Command;
@@ -121,6 +122,8 @@ public class TelemetrySendingTask extends TimerTask {
     if(sendData) {
       try {
         sendData(mergedData);
+        // reset data collection time frame on successful submit
+        staticData.getProduct().getInternals().setDataCollectionStart(ClockUtil.getCurrentTime());
       } catch (Exception e) {
         // so that we send it again the next time
         restoreDynamicData(dynamicData);
