@@ -56,7 +56,7 @@
         desc = "Vendor and version of the installed JDK."/>
 
     <@lib.property
-        name = "dataCollectionStartDate"
+        name = "data-collection-start-date"
         type = "string"
         format = "date-time"
         nullable = false

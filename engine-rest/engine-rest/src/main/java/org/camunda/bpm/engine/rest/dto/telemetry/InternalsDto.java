@@ -32,6 +32,7 @@ public class InternalsDto {
   public static final String SERIALIZED_APPLICATION_SERVER = "application-server";
   public static final String SERIALIZED_CAMUNDA_INTEGRATION = "camunda-integration";
   public static final String SERIALIZED_LICENSE_KEY = "license-key";
+  public static final String SERIALIZED_TELEMETRY_DATA_COLLECTION_START_DATE = "data-collection-start-date";
 
   protected DatabaseDto database;
   @JsonProperty(value = SERIALIZED_APPLICATION_SERVER)
@@ -40,6 +41,7 @@ public class InternalsDto {
   protected LicenseKeyDataDto licenseKey;
   @JsonProperty(value = SERIALIZED_CAMUNDA_INTEGRATION)
   protected Set<String> camundaIntegration;
+  @JsonProperty(value = SERIALIZED_TELEMETRY_DATA_COLLECTION_START_DATE)
   protected Date dataCollectionStartDate;
   protected Map<String, CommandDto> commands;
   protected Map<String, MetricDto> metrics;
