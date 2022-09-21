@@ -1022,7 +1022,7 @@ public abstract class MockProvider {
         .collect(Collectors.toMap(data -> (String) data[0], data -> new MetricImpl((Long) data[1]))));
     EXAMPLE_TELEMETRY_INTERNALS.setCamundaIntegration(Collections.singleton("spring-boot"));
     EXAMPLE_TELEMETRY_INTERNALS.setWebapps(Collections.singleton("cockpit"));
-    EXAMPLE_TELEMETRY_INTERNALS.setDataCollectionStart(DateTimeUtil.parseDate(EXAMPLE_TELEMETRY_DATA_COLLECTION_START_DATE));
+    EXAMPLE_TELEMETRY_INTERNALS.setDataCollectionStartDate(DateTimeUtil.parseDate(EXAMPLE_TELEMETRY_DATA_COLLECTION_START_DATE));
   }
   public static final ProductImpl EXAMPLE_TELEMETRY_PRODUCT = new ProductImpl(EXAMPLE_TELEMETRY_PRODUCT_NAME,
       EXAMPLE_TELEMETRY_PRODUCT_VERSION, EXAMPLE_TELEMETRY_PRODUCT_EDITION, EXAMPLE_TELEMETRY_INTERNALS);

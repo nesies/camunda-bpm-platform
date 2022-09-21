@@ -1025,16 +1025,13 @@ public class TelemetryReporterTest {
         .willReturn(aResponse()
             .withStatus(HttpURLConnection.HTTP_ACCEPTED)));
 
-    // we need to create these objects before the reporter fires because the data collection time frame will be reset
-    TelemetryDataImpl expectedData = getTelemetryDataIgnoreCollectionTimeFrame();
-    String requestBody = new Gson().toJson(expectedData);
-
     // when
     configuration.getTelemetryReporter().reportNow();
 
     //then
     verify(postRequestedFor(urlEqualTo(TELEMETRY_ENDPOINT_PATH))
-        .withRequestBody(equalToJson(requestBody, JSONCompareMode.LENIENT))
+        // we can only check that the property is included in the response i.e., it is not null
+        .withRequestBody(WireMock.matchingJsonPath("$.product.internals.data-collection-start-date"))
         .withHeader("Content-Type",  equalTo("application/json")));
   }
 
@@ -1153,6 +1150,11 @@ public class TelemetryReporterTest {
       return this;
     }
 
+    public TelemetryDataBuilder dataCollectionStartDate(Date date) {
+      data.getProduct().getInternals().setDataCollectionStartDate(date);
+      return this;
+    }
+
     public TelemetryDataBuilder webapps(String... webapps) {
       Set<String> webappSet = new HashSet<>();
       for (String webapp : webapps) {
@@ -1233,7 +1235,7 @@ public class TelemetryReporterTest {
 
   protected TelemetryDataImpl getTelemetryDataIgnoreCollectionTimeFrame() {
     TelemetryDataImpl telemetryData = configuration.getTelemetryData();
-    telemetryData.getProduct().getInternals().setDataCollectionStart(null);
+    telemetryData.getProduct().getInternals().setDataCollectionStartDate(null);
     return telemetryData;
   }
 

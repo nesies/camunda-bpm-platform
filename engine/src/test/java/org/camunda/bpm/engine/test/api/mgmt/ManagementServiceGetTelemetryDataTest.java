@@ -382,7 +382,7 @@ public class ManagementServiceGetTelemetryDataTest {
     // current time after engine startup but before fetching telemetry data
     Date beforeGetTelemetry = ClockUtil.getCurrentTime();
 
-    // avtivate telemetry
+    // activate telemetry
     managementService.toggleTelemetry(true);
 
     // move clock by one second to pass some time before fetching telemetry
@@ -393,6 +393,25 @@ public class ManagementServiceGetTelemetryDataTest {
 
     // then
     assertThat(telemetryData.getProduct().getInternals().getDataCollectionStartDate()).isBefore(beforeGetTelemetry);
+  }
+
+  @Test
+  public void shouldResetDataCollectionTimeFrameWhenTelemetryEnabled() {
+    // given the collection date is set at engine startup
+    Date dataCollectionStartDateBeforeToggle = managementService.getTelemetryData().getProduct().getInternals().getDataCollectionStartDate();
+    // pass at least one second between the two telemetry calls because MySQL has only second precision
+    ClockUtil.offset(1000L);
+
+    Date beforeToggleTelemetry = ClockUtil.freezeClock();
+
+    // when
+    managementService.toggleTelemetry(true);
+
+    // then
+    Date dataCollectionStartDateAfterToggle = managementService.getTelemetryData().getProduct().getInternals().getDataCollectionStartDate();
+
+    assertThat(beforeToggleTelemetry).isEqualToIgnoringMillis(dataCollectionStartDateAfterToggle);
+    assertThat(dataCollectionStartDateBeforeToggle).isBefore(dataCollectionStartDateAfterToggle);
   }
 
   @Test

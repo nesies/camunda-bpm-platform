@@ -24,6 +24,7 @@ import org.camunda.bpm.engine.impl.interceptor.CommandContext;
 import org.camunda.bpm.engine.impl.persistence.entity.AuthorizationManager;
 import org.camunda.bpm.engine.impl.telemetry.TelemetryLogger;
 import org.camunda.bpm.engine.impl.telemetry.reporter.TelemetryReporter;
+import org.camunda.bpm.engine.impl.util.ClockUtil;
 import org.camunda.bpm.engine.impl.util.TelemetryUtil;
 
 public class TelemetryConfigureCmd implements Command<Void> {
@@ -77,6 +78,8 @@ public class TelemetryConfigureCmd implements Command<Void> {
         telemetryEnabled,
         processEngineConfiguration.getTelemetryRegistry(),
         processEngineConfiguration.getMetricsRegistry());
+    // reset data collection time frame
+    processEngineConfiguration.getTelemetryData().getProduct().getInternals().setDataCollectionStartDate(ClockUtil.getCurrentTime());
   }
 
 }

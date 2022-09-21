@@ -98,7 +98,7 @@ public class InternalsImpl implements Internals {
     return dataCollectionStartDate;
   }
 
-  public void setDataCollectionStart(Date dataCollectionStartDate) {
+  public void setDataCollectionStartDate(Date dataCollectionStartDate) {
     this.dataCollectionStartDate = dataCollectionStartDate;
   }
 

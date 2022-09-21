@@ -57,7 +57,7 @@ public class ClockUtilTest {
     Date target = new Date(new Date().getTime() + duration);
 
     ClockUtil.offset(duration);
-    
+
     Thread.sleep(1100L);
 
     assertThat(ClockUtil.now()).isCloseTo(target, TWO_SECONDS);
@@ -69,7 +69,7 @@ public class ClockUtilTest {
     Date target = new Date(new Date().getTime() + duration);
 
     ClockUtil.setCurrentTime(target);
-    
+
     Thread.sleep(1100L);
 
     assertThat(ClockUtil.now()).isCloseTo(target, ONE_SECOND);
@@ -127,5 +127,28 @@ public class ClockUtilTest {
     Thread.sleep(FIVE_SECONDS);
 
     assertThat(ClockUtil.now()).isCloseTo(target, ONE_SECOND);
+  }
+
+  @Test
+  public void shouldFreezeTimeWithFreeze() throws InterruptedException {
+    // when
+    Date frozenDate = ClockUtil.freezeClock();
+    Thread.sleep(ONE_SECOND);
+
+    // then
+    assertThat(ClockUtil.getCurrentTime()).isEqualTo(frozenDate);
+  }
+
+  @Test
+  public void shouldUnfreezeTimeWhenReset() throws InterruptedException {
+    // given
+    Date frozenDate = ClockUtil.freezeClock();
+    Thread.sleep(ONE_SECOND);
+
+    // when
+    ClockUtil.reset();
+
+    // then
+    assertThat(ClockUtil.getCurrentTime()).isAfter(frozenDate);
   }
 }

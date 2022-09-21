@@ -55,9 +55,20 @@ public interface Internals {
    * and metrics. If telemetry sending is enabled, dynamic data resets on sending the data
    * to Camunda.
    *
-   * This method returns a date that is initially set to the current time on engine startup
-   * and reset on sending telemetry data to Camunda. It represents the start of the time
-   * frame where the current telemetry data set was collected.
+   * This method returns a date that represents the date and time when the dynamic data collected
+   * for telemetry is reset. Dynamic data and the date retunred by this method are reset in three
+   * cases:
+   *
+   * <ul>
+   *   <li>At engine startup, the date is set to the current time, even if telemetry is disabled.
+   *       It is then only used by the Telemetry Query API that returns the currently collected
+   *       data but sending telemetry to Camunda is disabled.</li>
+   *   <li>When sending telemetry to Camunda is enabled after engine start via API (e.g.,
+   *       {@link ManagementService#toggleTelemetry(boolean)}. This call causes the engine to wipe
+   *       all dynamic data and therefore the collection date is reset to the current time.</li>
+   *   <li>When sending telemtry to Camunda is enabled, upon sending the data, all existing dynamic
+   *       data is wiped and therefore the collection date is reset to the current time.</li>
+   * </ul>
    *
    * @return A date that represents the start of the time frame where the current telemetry
    * data set was collected.

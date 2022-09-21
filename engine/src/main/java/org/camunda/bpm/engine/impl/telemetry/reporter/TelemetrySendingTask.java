@@ -123,7 +123,7 @@ public class TelemetrySendingTask extends TimerTask {
       try {
         sendData(mergedData);
         // reset data collection time frame on successful submit
-        staticData.getProduct().getInternals().setDataCollectionStart(ClockUtil.getCurrentTime());
+        staticData.getProduct().getInternals().setDataCollectionStartDate(ClockUtil.getCurrentTime());
       } catch (Exception e) {
         // so that we send it again the next time
         restoreDynamicData(dynamicData);
