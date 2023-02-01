@@ -29,7 +29,7 @@ pipeline {
     stage('ASSEMBLY') {
       when {
         expression {
-          env.BRANCH_NAME == cambpmDefaultBranch() || (changeRequest() && !pullRequest.labels.contains('no-build'))
+          env.BRANCH_NAME == cambpmDefaultBranch() || (changeRequest() && !pullRequest.labels.contains('ci:no-build'))
         }
       }
       environment {
@@ -41,13 +41,21 @@ pipeline {
           agentLabel: 'h2_perf32',
           suppressErrors: false,
           runSteps: {
-            cambpmRunMaven('.',
-                'clean source:jar deploy source:test-jar com.mycila:license-maven-plugin:check -Pdistro,distro-ce,distro-wildfly,distro-webjar,h2-in-memory -DaltStagingDirectory=${WORKSPACE}/staging -DskipRemoteStaging=true',
-                withCatch: false,
-                withNpm: true,
-                // we use JDK 11 to build the artifacts, as it is required by the Quarkus extension
-                // the compiler source and target is set to JDK 8 in the release parents
-                jdkVersion: 'jdk-11-latest')
+            withVault([vaultSecrets: [
+                [
+                    path        : 'secret/products/cambpm/ci/xlts.dev',
+                    secretValues: [
+                        [envVar: 'XLTS_REGISTRY', vaultKey: 'registry'],
+                        [envVar: 'XLTS_AUTH_TOKEN', vaultKey: 'authToken']]
+                ]]]) {
+              cambpmRunMaven('.',
+                  'clean source:jar deploy source:test-jar com.mycila:license-maven-plugin:check -Pdistro,distro-ce,distro-wildfly,distro-webjar,h2-in-memory -DaltStagingDirectory=${WORKSPACE}/staging -DskipRemoteStaging=true',
+                  withCatch: false,
+                  withNpm: true,
+                  // we use JDK 11 to build the artifacts, as it is required by the Quarkus extension
+                  // the compiler source and target is set to JDK 8 in the release parents
+                  jdkVersion: 'jdk-11-latest')
+            }
 
             // archive all .jar, .pom, .xml, .txt runtime artifacts + required .war/.zip/.tar.gz for EE pipeline
             // add a new line for each group of artifacts
@@ -58,7 +66,6 @@ pipeline {
                                   '.m2/org/camunda/**/*-SNAPSHOT/**/camunda-webapp*.war',
                                   '.m2/org/camunda/**/*-SNAPSHOT/**/camunda-engine-rest*.war',
                                   '.m2/org/camunda/**/*-SNAPSHOT/**/camunda-example-invoice*.war',
-                                  '.m2/org/camunda/**/*-SNAPSHOT/**/camunda-h2-webapp*.war',
                                   '.m2/org/camunda/**/*-SNAPSHOT/**/camunda-bpm-run-modules-swaggerui-*-run-swaggerui-license-book-json.json')
 
             cambpmStash("platform-stash-runtime",
@@ -106,7 +113,9 @@ pipeline {
                 )
               }
 
-              if (cambpmWithLabels('daily', 'default-build', 'jdk', 'rolling-update', 'migration', 'wildfly', 'all-db', 'h2', 'db2', 'mysql', 'oracle', 'mariadb', 'sqlserver', 'postgresql')) {
+              // don't trigger the daily pipeline from a master branch build
+              // or if a PR has no relevant labels
+              if (env.BRANCH_NAME != cambpmDefaultBranch() && cambpmWithLabels('default-build', 'jdk', 'rolling-update', 'migration', 'wildfly', 'all-db', 'h2', 'db2', 'mysql', 'oracle', 'mariadb', 'sqlserver', 'postgresql')) {
                 cambpmTriggerDownstream(
                   platformVersionDir + "/cambpm-ce/cambpm-daily/${env.BRANCH_NAME}",
                   [string(name: 'UPSTREAM_PROJECT_NAME', value: upstreamProjectName),
@@ -125,6 +134,8 @@ pipeline {
           },
           postFailure: {
             cambpmPublishTestResult()
+            // archive any heap dumps generated in the target folder
+            cambpmArchiveArtifacts(false, '**/target/*.hprof')
           }
         ])
 
@@ -206,7 +217,7 @@ pipeline {
             ])
           }
         }
-        stage('engine-IT-tomcat-9-postgresql-96') {
+        stage('engine-IT-tomcat-9-postgresql-142') {
           when {
             expression {
               cambpmWithLabels('all-as', 'tomcat')
@@ -214,7 +225,7 @@ pipeline {
           }
           steps {
             cambpmConditionalRetry([
-              agentLabel: 'postgresql_96',
+              agentLabel: 'postgresql_142',
               runSteps: {
                 cambpmRunMaven('qa/', 'clean install -Ptomcat,postgresql,engine-integration', runtimeStash: true, archiveStash: true)
               },
@@ -224,7 +235,7 @@ pipeline {
             ])
           }
         }
-        stage('engine-IT-wildfly-postgresql-96') {
+        stage('engine-IT-wildfly-postgresql-142') {
           when {
             expression {
               cambpmWithLabels('all-as', 'wildfly')
@@ -232,7 +243,7 @@ pipeline {
           }
           steps {
             cambpmConditionalRetry([
-              agentLabel: 'postgresql_96',
+              agentLabel: 'postgresql_142',
               runSteps: {
                 cambpmRunMaven('qa/', 'clean install -Pwildfly,postgresql,engine-integration', runtimeStash: true, archiveStash: true)
               },
@@ -244,7 +255,7 @@ pipeline {
             ])
           }
         }
-        stage('engine-IT-XA-wildfly-postgresql-96') {
+        stage('engine-IT-XA-wildfly-postgresql-142') {
           when {
             expression {
               cambpmWithLabels('wildfly')
@@ -252,7 +263,7 @@ pipeline {
           }
           steps {
             cambpmConditionalRetry([
-              agentLabel: 'postgresql_96',
+              agentLabel: 'postgresql_142',
               runSteps: {
                 cambpmRunMaven('qa/', 'clean install -Pwildfly,postgresql,postgresql-xa,engine-integration', runtimeStash: true, archiveStash: true)
               },

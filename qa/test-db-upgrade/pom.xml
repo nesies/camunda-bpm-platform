@@ -4,7 +4,7 @@
   <parent>
     <groupId>org.camunda.bpm.qa</groupId>
     <artifactId>camunda-qa</artifactId>
-    <version>7.17.0</version>
+    <version>7.18.0</version>
   </parent>
 
   <properties>
@@ -17,7 +17,7 @@
 
          See CAM-6338
     -->
-    <camunda.version.old>7.16.0</camunda.version.old>
+    <camunda.version.old>7.17.0</camunda.version.old>
   </properties>
 
   <artifactId>camunda-qa-db-upgrade</artifactId>
@@ -328,28 +328,6 @@
         </plugins>
       </build>
     </profile>
-    <profile>
-      <id>mariadb-galera</id>
-      <build>
-        <plugins>
-          <plugin>
-            <artifactId>maven-surefire-plugin</artifactId>
-            <configuration>
-              <failIfNoTests>false</failIfNoTests>
-              <trimStackTrace>false</trimStackTrace>
-              <redirectTestOutputToFile>true</redirectTestOutputToFile>
-              <excludes combine.children="append">
-                <exclude>**/JdbcStatementTimeoutTest.java</exclude>
-                <exclude>**/CompetingMessageCorrelationTest.java</exclude>
-                <exclude>**/ConcurrentDeploymentTest.java</exclude>
-                <exclude>**/DatabaseFlushTest.java</exclude>
-                <exclude>**/*TestCase.java</exclude>
-              </excludes>
-            </configuration>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
   </profiles>
 
   <dependencyManagement>
@@ -428,7 +406,7 @@
 
     <dependency>
       <groupId>org.codehaus.groovy</groupId>
-      <artifactId>groovy-all</artifactId>
+      <artifactId>groovy-jsr223</artifactId>
     </dependency>
 
     <dependency>

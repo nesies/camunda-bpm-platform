@@ -20,10 +20,6 @@ package org.camunda.bpm.engine.impl.cfg;
 import static org.camunda.bpm.engine.impl.cmd.HistoryCleanupCmd.MAX_THREADS_NUMBER;
 import static org.camunda.bpm.engine.impl.util.EnsureUtil.ensureNotNull;
 
-import javax.naming.InitialContext;
-import javax.script.ScriptEngineManager;
-import javax.sql.DataSource;
-
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -47,6 +43,10 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 
+import javax.naming.InitialContext;
+import javax.script.ScriptEngineManager;
+import javax.sql.DataSource;
+
 import org.apache.ibatis.builder.xml.XMLConfigBuilder;
 import org.apache.ibatis.datasource.pooled.PooledDataSource;
 import org.apache.ibatis.mapping.Environment;
@@ -60,6 +60,7 @@ import org.apache.ibatis.transaction.managed.ManagedTransactionFactory;
 import org.camunda.bpm.dmn.engine.DmnEngine;
 import org.camunda.bpm.dmn.engine.DmnEngineConfiguration;
 import org.camunda.bpm.dmn.engine.impl.DefaultDmnEngineConfiguration;
+import org.camunda.bpm.dmn.engine.impl.spi.el.ElProvider;
 import org.camunda.bpm.dmn.feel.impl.scala.function.FeelCustomFunctionProvider;
 import org.camunda.bpm.engine.ArtifactFactory;
 import org.camunda.bpm.engine.AuthorizationService;
@@ -159,9 +160,12 @@ import org.camunda.bpm.engine.impl.dmn.deployer.DecisionDefinitionDeployer;
 import org.camunda.bpm.engine.impl.dmn.deployer.DecisionRequirementsDefinitionDeployer;
 import org.camunda.bpm.engine.impl.dmn.entity.repository.DecisionDefinitionManager;
 import org.camunda.bpm.engine.impl.dmn.entity.repository.DecisionRequirementsDefinitionManager;
-import org.camunda.bpm.engine.impl.el.CommandContextFunctionMapper;
-import org.camunda.bpm.engine.impl.el.DateTimeFunctionMapper;
+import org.camunda.bpm.engine.impl.el.CommandContextFunctions;
+import org.camunda.bpm.engine.impl.el.DateTimeFunctions;
+import org.camunda.bpm.engine.impl.el.ElProviderCompatible;
 import org.camunda.bpm.engine.impl.el.ExpressionManager;
+import org.camunda.bpm.engine.impl.el.JuelExpressionManager;
+import org.camunda.bpm.engine.impl.errorcode.ExceptionCodeProvider;
 import org.camunda.bpm.engine.impl.event.CompensationEventHandler;
 import org.camunda.bpm.engine.impl.event.ConditionalEventHandler;
 import org.camunda.bpm.engine.impl.event.EventHandler;
@@ -219,6 +223,7 @@ import org.camunda.bpm.engine.impl.interceptor.CommandExecutorImpl;
 import org.camunda.bpm.engine.impl.interceptor.CommandInterceptor;
 import org.camunda.bpm.engine.impl.interceptor.CrdbTransactionRetryInterceptor;
 import org.camunda.bpm.engine.impl.interceptor.DelegateInterceptor;
+import org.camunda.bpm.engine.impl.interceptor.ExceptionCodeInterceptor;
 import org.camunda.bpm.engine.impl.interceptor.SessionFactory;
 import org.camunda.bpm.engine.impl.jobexecutor.AsyncContinuationJobHandler;
 import org.camunda.bpm.engine.impl.jobexecutor.DefaultFailedJobCommandFactory;
@@ -346,11 +351,11 @@ import org.camunda.bpm.engine.impl.scripting.engine.VariableScopeResolverFactory
 import org.camunda.bpm.engine.impl.scripting.env.ScriptEnvResolver;
 import org.camunda.bpm.engine.impl.scripting.env.ScriptingEnvironment;
 import org.camunda.bpm.engine.impl.telemetry.TelemetryRegistry;
-import org.camunda.bpm.engine.impl.telemetry.dto.TelemetryDataImpl;
 import org.camunda.bpm.engine.impl.telemetry.dto.DatabaseImpl;
 import org.camunda.bpm.engine.impl.telemetry.dto.InternalsImpl;
 import org.camunda.bpm.engine.impl.telemetry.dto.JdkImpl;
 import org.camunda.bpm.engine.impl.telemetry.dto.ProductImpl;
+import org.camunda.bpm.engine.impl.telemetry.dto.TelemetryDataImpl;
 import org.camunda.bpm.engine.impl.telemetry.reporter.TelemetryReporter;
 import org.camunda.bpm.engine.impl.util.IoUtil;
 import org.camunda.bpm.engine.impl.util.ParseUtil;
@@ -390,7 +395,6 @@ import org.camunda.bpm.engine.variable.type.ValueType;
 import org.camunda.connect.Connectors;
 import org.camunda.connect.spi.Connector;
 import org.camunda.connect.spi.ConnectorRequest;
-
 
 /**
  * @author Tom Baeyens
@@ -589,6 +593,7 @@ public abstract class ProcessEngineConfigurationImpl extends ProcessEngineConfig
   protected Charset defaultCharset = null;
 
   protected ExpressionManager expressionManager;
+  protected ElProvider dmnElProvider;
   protected ScriptingEngines scriptingEngines;
   protected List<ResolverFactory> resolverFactories;
   protected ScriptingEnvironment scriptingEnvironment;
@@ -974,12 +979,17 @@ public abstract class ProcessEngineConfigurationImpl extends ProcessEngineConfig
 
   // logging context property names (with default values)
   protected String loggingContextActivityId = "activityId";
+  protected String loggingContextActivityName = "activityName";
   protected String loggingContextApplicationName = "applicationName";
   protected String loggingContextBusinessKey;// default == null => disabled by default
   protected String loggingContextProcessDefinitionId = "processDefinitionId";
+  protected String loggingContextProcessDefinitionKey;// default == null => disabled by default
   protected String loggingContextProcessInstanceId = "processInstanceId";
   protected String loggingContextTenantId = "tenantId";
+  protected String loggingContextEngineName = "engineName";
 
+  // logging levels (with default values)
+  protected String logLevelBpmnStackTrace = "DEBUG";
 
   // telemetry ///////////////////////////////////////////////////////
   /**
@@ -1008,6 +1018,80 @@ public abstract class ProcessEngineConfigurationImpl extends ProcessEngineConfig
    *  default: 15 seconds */
   protected int telemetryRequestTimeout = 15 * 1000;
 
+  // Exception Codes ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * Disables the {@link ExceptionCodeInterceptor} and therefore the whole exception code feature.
+   */
+  protected boolean disableExceptionCode;
+
+  /**
+   * Disables the default implementation of {@link ExceptionCodeProvider} which allows overriding the reserved
+   * exception codes > {@link ExceptionCodeInterceptor#MAX_CUSTOM_CODE} or < {@link ExceptionCodeInterceptor#MIN_CUSTOM_CODE}.
+   */
+  protected boolean disableBuiltinExceptionCodeProvider;
+
+  /**
+   * Allows registering a custom implementation of a {@link ExceptionCodeProvider}
+   * allowing to provide custom exception codes.
+   */
+  protected ExceptionCodeProvider customExceptionCodeProvider;
+
+  /**
+   * Holds the default implementation of {@link ExceptionCodeProvider}.
+   */
+  protected ExceptionCodeProvider builtinExceptionCodeProvider;
+
+  /**
+   * @return {@code true} if the exception code feature is disabled and vice-versa.
+   */
+  public boolean isDisableExceptionCode() {
+    return disableExceptionCode;
+  }
+
+  /**
+   * Setter to disables the {@link ExceptionCodeInterceptor} and therefore the whole exception code feature.
+   */
+  public void setDisableExceptionCode(boolean disableExceptionCode) {
+    this.disableExceptionCode = disableExceptionCode;
+  }
+
+  /**
+   * @return {@code true} if the built-in exception code provider is disabled and vice-versa.
+   */
+  public boolean isDisableBuiltinExceptionCodeProvider() {
+    return disableBuiltinExceptionCodeProvider;
+  }
+
+  /**
+   * Setter to disables the default implementation of {@link ExceptionCodeProvider} which allows overriding the reserved
+   * exception codes > {@link ExceptionCodeInterceptor#MAX_CUSTOM_CODE} or < {@link ExceptionCodeInterceptor#MIN_CUSTOM_CODE}.
+   */
+  public void setDisableBuiltinExceptionCodeProvider(boolean disableBuiltinExceptionCodeProvider) {
+    this.disableBuiltinExceptionCodeProvider = disableBuiltinExceptionCodeProvider;
+  }
+
+  /**
+   * @return a custom implementation of a {@link ExceptionCodeProvider} allowing to provide custom error codes.
+   */
+  public ExceptionCodeProvider getCustomExceptionCodeProvider() {
+    return customExceptionCodeProvider;
+  }
+
+  /**
+   * Setter to register a custom implementation of a {@link ExceptionCodeProvider} allowing to provide custom error codes.
+   */
+  public void setCustomExceptionCodeProvider(ExceptionCodeProvider customExceptionCodeProvider) {
+    this.customExceptionCodeProvider = customExceptionCodeProvider;
+  }
+
+  public ExceptionCodeProvider getBuiltinExceptionCodeProvider() {
+    return builtinExceptionCodeProvider;
+  }
+
+  public void setBuiltinExceptionCodeProvider(ExceptionCodeProvider builtinExceptionCodeProvider) {
+    this.builtinExceptionCodeProvider = builtinExceptionCodeProvider;
+  }
 
   // buildProcessEngine ///////////////////////////////////////////////////////
 
@@ -1044,6 +1128,7 @@ public abstract class ProcessEngineConfigurationImpl extends ProcessEngineConfig
     // Database type needs to be detected before CommandExecutors are initialized
     initDataSource();
 
+    initExceptionCodeProvider();
     initCommandExecutors();
     initServices();
     initIdGenerator();
@@ -1085,6 +1170,13 @@ public abstract class ProcessEngineConfigurationImpl extends ProcessEngineConfig
     initAdminGroups();
     initPasswordPolicy();
     invokePostInit();
+  }
+
+  public void initExceptionCodeProvider() {
+    if (!isDisableBuiltinExceptionCodeProvider()) {
+      builtinExceptionCodeProvider = new ExceptionCodeProvider() {};
+
+    }
   }
 
   protected void initTypeValidator() {
@@ -2545,13 +2637,19 @@ public abstract class ProcessEngineConfigurationImpl extends ProcessEngineConfig
         dmnEngineConfiguration = (DefaultDmnEngineConfiguration) DmnEngineConfiguration.createDefaultDmnEngineConfiguration();
       }
 
-      dmnEngineConfiguration = new DmnEngineConfigurationBuilder(dmnEngineConfiguration)
+      DmnEngineConfigurationBuilder dmnEngineConfigurationBuilder = new DmnEngineConfigurationBuilder(dmnEngineConfiguration)
           .dmnHistoryEventProducer(dmnHistoryEventProducer)
           .scriptEngineResolver(scriptingEngines)
-          .expressionManager(expressionManager)
           .feelCustomFunctionProviders(dmnFeelCustomFunctionProviders)
-          .enableFeelLegacyBehavior(dmnFeelEnableLegacyBehavior)
-          .build();
+          .enableFeelLegacyBehavior(dmnFeelEnableLegacyBehavior);
+
+      if (dmnElProvider != null) {
+        dmnEngineConfigurationBuilder.elProvider(dmnElProvider);
+      } else if (expressionManager instanceof ElProviderCompatible) {
+        dmnEngineConfigurationBuilder.elProvider(((ElProviderCompatible)expressionManager).toElProvider());
+      }
+
+      dmnEngineConfiguration = dmnEngineConfigurationBuilder.build();
 
       dmnEngine = dmnEngineConfiguration.buildEngine();
 
@@ -2562,13 +2660,19 @@ public abstract class ProcessEngineConfigurationImpl extends ProcessEngineConfig
 
   protected void initExpressionManager() {
     if (expressionManager == null) {
-      expressionManager = new ExpressionManager(beans);
+      expressionManager = new JuelExpressionManager(beans);
     }
 
-    // add function mapper for command context (eg currentUser(), currentUserGroups())
-    expressionManager.addFunctionMapper(new CommandContextFunctionMapper());
-    // add function mapper for date time (eg now(), dateTime())
-    expressionManager.addFunctionMapper(new DateTimeFunctionMapper());
+
+    expressionManager.addFunction(CommandContextFunctions.CURRENT_USER,
+        ReflectUtil.getMethod(CommandContextFunctions.class, CommandContextFunctions.CURRENT_USER));
+    expressionManager.addFunction(CommandContextFunctions.CURRENT_USER_GROUPS,
+        ReflectUtil.getMethod(CommandContextFunctions.class, CommandContextFunctions.CURRENT_USER_GROUPS));
+
+    expressionManager.addFunction(DateTimeFunctions.NOW,
+        ReflectUtil.getMethod(DateTimeFunctions.class, DateTimeFunctions.NOW));
+    expressionManager.addFunction(DateTimeFunctions.DATE_TIME,
+        ReflectUtil.getMethod(DateTimeFunctions.class, DateTimeFunctions.DATE_TIME));
   }
 
   protected void initBusinessCalendarManager() {
@@ -3185,6 +3289,15 @@ public abstract class ProcessEngineConfigurationImpl extends ProcessEngineConfig
 
   public ProcessEngineConfigurationImpl setExpressionManager(ExpressionManager expressionManager) {
     this.expressionManager = expressionManager;
+    return this;
+  }
+
+  public ElProvider getDmnElProvider() {
+    return dmnElProvider;
+  }
+
+  public ProcessEngineConfigurationImpl setDmnElProvider(ElProvider elProvider) {
+    this.dmnElProvider = elProvider;
     return this;
   }
 
@@ -5013,6 +5126,15 @@ public abstract class ProcessEngineConfigurationImpl extends ProcessEngineConfig
     return this;
   }
 
+  public String getLoggingContextActivityName() {
+    return loggingContextActivityName;
+  }
+
+  public ProcessEngineConfigurationImpl setLoggingContextActivityName(final String loggingContextActivityName) {
+    this.loggingContextActivityName = loggingContextActivityName;
+    return this;
+  }
+
   public String getLoggingContextApplicationName() {
     return loggingContextApplicationName;
   }
@@ -5040,6 +5162,15 @@ public abstract class ProcessEngineConfigurationImpl extends ProcessEngineConfig
     return this;
   }
 
+  public String getLoggingContextProcessDefinitionKey() {
+    return loggingContextProcessDefinitionKey;
+  }
+
+  public ProcessEngineConfigurationImpl setLoggingContextProcessDefinitionKey(String loggingContextProcessDefinitionKey) {
+    this.loggingContextProcessDefinitionKey = loggingContextProcessDefinitionKey;
+    return this;
+  }
+
   public String getLoggingContextProcessInstanceId() {
     return loggingContextProcessInstanceId;
   }
@@ -5055,6 +5186,24 @@ public abstract class ProcessEngineConfigurationImpl extends ProcessEngineConfig
 
   public ProcessEngineConfigurationImpl setLoggingContextTenantId(String loggingContextTenantId) {
     this.loggingContextTenantId = loggingContextTenantId;
+    return this;
+  }
+
+  public String getLoggingContextEngineName() {
+    return loggingContextEngineName;
+  }
+
+  public ProcessEngineConfigurationImpl setLoggingContextEngineName(String loggingContextEngineName) {
+    this.loggingContextEngineName = loggingContextEngineName;
+    return this;
+  }
+
+  public String getLogLevelBpmnStackTrace() {
+    return logLevelBpmnStackTrace;
+  }
+
+  public ProcessEngineConfigurationImpl setLogLevelBpmnStackTrace(final String logLevelBpmnStackTrace) {
+    this.logLevelBpmnStackTrace = logLevelBpmnStackTrace;
     return this;
   }
 
@@ -5168,6 +5317,14 @@ public abstract class ProcessEngineConfigurationImpl extends ProcessEngineConfig
 
   protected CrdbTransactionRetryInterceptor getCrdbRetryInterceptor() {
     return new CrdbTransactionRetryInterceptor(commandRetries);
+  }
+
+  /**
+   * @return a exception code interceptor. The interceptor is not registered in case
+   * {@code disableExceptionCode} is configured to {@code true}.
+   */
+  protected ExceptionCodeInterceptor getExceptionCodeInterceptor() {
+    return new ExceptionCodeInterceptor(builtinExceptionCodeProvider, customExceptionCodeProvider);
   }
 
 }

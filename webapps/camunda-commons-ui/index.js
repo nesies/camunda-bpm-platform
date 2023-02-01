@@ -67,15 +67,13 @@ function requirejsConf(options) {
       'angular-animate': 'node_modules/angular-animate/angular-animate',
       'angular-cookies': 'node_modules/angular-cookies/angular-cookies',
       'angular-loader': 'node_modules/angular-loader/angular-loader',
-      'angular-mocks': 'node_modules/angular-mocks/angular-mocks',
       'angular-resource': 'node_modules/angular-resource/angular-resource',
       'angular-route': 'node_modules/angular-route/angular-route',
       'angular-sanitize': 'node_modules/angular-sanitize/angular-sanitize',
-      'angular-scenario': 'node_modules/angular-scenario/angular-scenario',
       'angular-touch': 'node_modules/angular-touch/angular-touch',
 
       // #### vendor dependencies
-      'angular-bootstrap': 'vendor/ui-bootstrap-tpls-2.5.0-camunda',
+      'angular-bootstrap': 'angular-ui-bootstrap',
       prismjs: 'vendor/prism',
       'bpmn-io': 'node_modules/bower-bpmn-js/dist/bpmn-navigated-viewer',
       'dmn-io': 'node_modules/dmn-js/dist/dmn-modeler'
@@ -104,7 +102,6 @@ function requirejsConf(options) {
       'angular-resource': ['angular'],
       'angular-route': ['angular'],
       'angular-sanitize': ['angular'],
-      'angular-scenario': ['angular'],
       'angular-touch': ['angular'],
       'angular-bootstrap': ['angular'],
       'angular-translate': ['angular']

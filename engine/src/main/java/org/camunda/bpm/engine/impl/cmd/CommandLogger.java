@@ -317,4 +317,19 @@ public class CommandLogger extends ProcessEngineLogger {
       cause.getMessage());
   }
 
+  public void warnFilteringDuplicatesEnabledWithNullDeploymentName() {
+    logWarn("047", "Deployment name set to null. Filtering duplicates will not work properly.");
+  }
+
+  public void warnReservedErrorCode(int initialCode) {
+    logWarn("048", "With error code {} you are using a reserved error code. Falling back to default error code 0. "
+        + "If you want to override built-in error codes, please disable the built-in error code provider.", initialCode);
+  }
+
+  public void warnResetToBuiltinCode(Integer builtinCode, int initialCode) {
+    logWarn("049", "You are trying to override the built-in code {} with {}. "
+        + "Falling back to built-in code. If you want to override built-in error codes, "
+        + "please disable the built-in error code provider.", builtinCode, initialCode);
+  }
+
 }

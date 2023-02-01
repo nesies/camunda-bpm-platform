@@ -11,7 +11,7 @@
 
   <groupId>org.camunda.bpm</groupId>
   <artifactId>camunda-root</artifactId>
-  <version>7.17.0</version>
+  <version>7.18.0</version>
   <packaging>pom</packaging>
   <name>Camunda Platform - Root Pom</name>
   <inceptionYear>2013</inceptionYear>
@@ -28,12 +28,12 @@
     <version.mybatis>3.5.6</version.mybatis>
     <version.joda-time>2.1</version.joda-time>
     <version.uuid-generator>3.2.0</version.uuid-generator>
-    <version.camunda.commons>1.10.0</version.camunda.commons>
-    <version.camunda.connect>1.5.2</version.camunda.connect>
-    <version.camunda.spin>1.14.0</version.camunda.spin>
+    <version.camunda.commons>1.12.0</version.camunda.commons>
+    <version.camunda.connect>1.5.6</version.camunda.connect>
+    <version.camunda.spin>1.18.0</version.camunda.spin>
     <version.camunda.template-engines>2.1.0</version.camunda.template-engines>
     <version.camunda.ee.xslt-plugin>1.1.0</version.camunda.ee.xslt-plugin>
-    <version.feel-scala>1.13.3</version.feel-scala>
+    <version.feel-scala>1.14.2</version.feel-scala>
     <plugin.version.javadoc>3.0.1</plugin.version.javadoc>
   </properties>
 
@@ -68,8 +68,6 @@
         <module>quarkus-extension</module>
 
         <module>qa</module>
-
-        <module>distro/h2-webapp</module>
 
         <module>javaee/ejb-service</module>
         <module>javaee/ejb-client</module>
@@ -152,8 +150,6 @@
       <id>distro-serverless</id>
       <modules>
         <module>qa</module>
-
-        <module>distro/h2-webapp</module>
 
         <module>engine</module>
         <module>engine-cdi</module>
@@ -330,7 +326,7 @@
     <url>https://github.com/camunda/camunda-bpm-platform</url>
     <connection>scm:git:git@github.com:camunda/camunda-bpm-platform.git</connection>
     <developerConnection>scm:git:git@github.com:camunda/camunda-bpm-platform.git</developerConnection>
-    <tag>7.17.0</tag>
+    <tag>7.18.0</tag>
   </scm>
 
   <issueManagement>

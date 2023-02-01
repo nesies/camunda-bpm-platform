@@ -6,7 +6,7 @@
   <parent>
     <groupId>org.camunda.bpm</groupId>
     <artifactId>camunda-database-settings</artifactId>
-    <version>7.17.0</version>
+    <version>7.18.0</version>
     <relativePath>../database</relativePath>
   </parent>
 
@@ -966,7 +966,7 @@
             <artifactId>maven-antrun-plugin</artifactId>
             <executions>
               <execution>
-                <id>generate-zip</id>
+                <id>build-frontend</id>
                 <phase>generate-resources</phase>
                 <goals>
                   <goal>run</goal>
@@ -979,6 +979,12 @@
                     <exec executable="cmd" failonerror="true">
                       <arg value="/c" />
                       <arg value="npm" />
+                      <arg value="ci" />
+                    </exec>
+                    <exec executable="cmd" failonerror="true">
+                      <arg value="/c" />
+                      <arg value="node" />
+                      <arg value="scripts/xlts" />
                       <arg value="install" />
                     </exec>
                     <exec executable="cmd" failonerror="true">
@@ -1010,7 +1016,7 @@
             <artifactId>maven-antrun-plugin</artifactId>
             <executions>
               <execution>
-                <id>generate-zip</id>
+                <id>build-frontend</id>
                 <phase>generate-resources</phase>
                 <goals>
                   <goal>run</goal>
@@ -1021,6 +1027,10 @@
                   <target>
                     <!-- run node build -->
                     <exec executable="npm" failonerror="true">
+                      <arg value="ci" />
+                    </exec>
+                    <exec executable="node" failonerror="true">
+                      <arg value="scripts/xlts" />
                       <arg value="install" />
                     </exec>
                     <exec executable="./node_modules/grunt-cli/bin/grunt" failonerror="true">
